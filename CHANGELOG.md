@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+- Auto-send now shows a countdown ring in the dictation bar (no more toasts). Record again to keep going, or click x / press Esc to cancel.
+- Auto-send settings reworded: it sends after transcribing finishes, after the delay you pick.
+
 ## 1.0.0
 First release.
 - Hold SPACE (or any key / mouse button you choose) or hold/tap the mic to dictate; live word-by-word text while you speak (Moonshine), accurate final text when you stop (faster-whisper).

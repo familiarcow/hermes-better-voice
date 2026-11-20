@@ -1,5 +1,5 @@
 /**
- * better-voice (desktop half) v1.0.0 — local dictation that never loses speech.
+ * better-voice (desktop half) v1.0.1 — local dictation that never loses speech.
  *
  *  - Settings → Plugins → Better Voice (or ⌘K → "Better Voice: settings"): hold-to-talk trigger, hold delay, beeps,
  *    insert style, live preview, hide the voice-mode button, auto-send after a take lands, include attachments.
