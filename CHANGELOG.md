@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+- Dictation now lands where your cursor is: with text highlighted in the composer it replaces the highlight, with the cursor mid-text it inserts there. Short fixes are lowercased and lose the trailing period so they read as part of the sentence. Replacements never auto-send.
+- Holding the trigger key over highlighted text dictates over it instead of typing a space over it (a quick tap still types the space).
+
 ## 1.0.1
 - Auto-send now shows a countdown ring in the dictation bar (no more toasts). Record again to keep going, or click x / press Esc to cancel.
 - Auto-send settings reworded: it sends after transcribing finishes, after the delay you pick.
