@@ -228,6 +228,12 @@ export default {
       .lw-spin{animation:lw-spin .9s linear infinite}
       html[data-lw-hide-voice] span:has(> button[aria-label="${START_VOICE_LABEL}"]){display:none !important}
       html[data-lw-hide-voice] button[aria-label="${START_VOICE_LABEL}"]{display:none !important}
+      .lw-rows{container-type:inline-size}
+      .lw-meta{display:flex;align-items:flex-start;gap:.5rem;flex-shrink:0;margin-left:auto}
+      @container (max-width:40rem){
+        .lw-row{flex-wrap:wrap}
+        .lw-txt{order:5;flex:1 1 100%;margin-top:.125rem}
+      }
       .lw-tag{border-radius:9999px;padding:0 .4rem;font-size:.625rem;line-height:1rem;font-weight:600;background:color-mix(in srgb,currentColor 14%,transparent)}
     `
     document.head.appendChild(style)
@@ -1489,14 +1495,14 @@ export default {
         willSend.has(t.id) ? jsx('span', { key: 'q', className: 'lw-tag mt-0.5 shrink-0 text-primary', children: 'Queued send' }) : null
       const bar = rows.length
         ? jsx('div', {
-            className: 'flex flex-col gap-1.5',
+            className: 'lw-rows flex flex-col gap-1.5',
             children: rows.map(t => {
               const rec = t.state === 'recording'
               return jsxs('div', {
                 key: t.id,
                 role: 'status',
                 'aria-live': 'polite',
-                className: 'flex items-start gap-2 rounded-xl border border-border/55 bg-muted/55 px-2.5 py-1.5 text-xs text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-sm',
+                className: 'lw-row flex items-start gap-2 rounded-xl border border-border/55 bg-muted/55 px-2.5 py-1.5 text-xs text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-sm',
                 children: [
                   jsx('div', {
                     key: 'i',
@@ -1506,9 +1512,13 @@ export default {
                   rec ? jsx('span', { key: 't', className: 'mt-0.5 shrink-0 font-mono text-[0.6875rem]', children: fmt((Date.now() - t.t0) / 1000) }) : null,
                   jsx('span', {
                     key: 'x',
-                    className: (rec ? 'font-medium text-foreground/85' : 'text-foreground/60') + ' mt-0.5 min-w-0 flex-1 whitespace-normal break-words',
+                    className: (rec ? 'font-medium text-foreground/85' : 'text-foreground/60') + ' lw-txt mt-0.5 min-w-0 flex-1 whitespace-normal break-words',
                     children: (preview && t.partial) || (rec ? 'Dictating' : '')
                   }),
+                  jsx('span', {
+                    key: 'm',
+                    className: 'lw-meta',
+                    children: [
                   sendTag(t),
                   rec ? null : jsx('span', { key: 'p', className: 'lw-dots mt-0.5 shrink-0 font-medium', children: 'Transcribing' }),
                   rec
@@ -1530,6 +1540,8 @@ export default {
                         },
                         children: jsx(XIcon, {})
                       })
+                    ]
+                  })
                 ]
               })
             })
