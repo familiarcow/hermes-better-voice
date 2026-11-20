@@ -1,0 +1,6 @@
+{
+  "name": "better-voice",
+  "label": "Better Voice",
+  "version": "1.0.0",
+  "api": "plugin_api.py"
+}
