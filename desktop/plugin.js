@@ -532,6 +532,7 @@ export default {
       if (S.recording) return false
       const t = newTake(target)
       t.hold = hold
+      t.sel = captureSel(target)
       cancelCountdown(sendKey(t.target, t.addr), '') // a new take for this chat restarts auto-send when it lands
       beep('start')
       // pre-roll first, then live audio flows in through onAudio
@@ -982,7 +983,7 @@ export default {
       if (!P().autoSend || disposed) return
       const seen = new Set()
       for (const t of list) {
-        if (t.restored) continue // restored dictations are never auto-sent
+        if (t.restored || t.edited) continue // restored dictations and in-place replacements are never auto-sent
         const key = sendKey(t.target, t.addr)
         if (seen.has(key) || queues.has(key) || sending.has(key)) continue
         seen.add(key)
@@ -1040,13 +1041,96 @@ export default {
       if (cd) cd.left = P().autoSendDelaySec
     }
 
+    // ── insert at the caret / replace the highlighted text ──
+    const composerBox = target => document.querySelector(`[data-composer-target="${CSS.escape(target || '')}"] [contenteditable="true"]`) || document.querySelector(`${COMPOSER} [contenteditable="true"]`)
+    // remember where the caret / highlight was when recording started (as text offsets, so re-renders can't invalidate it)
+    const captureSel = target => {
+      try {
+        const box = composerBox(target)
+        const s = window.getSelection()
+        if (!box || !s || !s.rangeCount) return null
+        const r = s.getRangeAt(0)
+        if (!box.contains(r.startContainer) || !box.contains(r.endContainer)) return null
+        const off = (node, o) => {
+          const pre = document.createRange()
+          pre.selectNodeContents(box)
+          pre.setEnd(node, o)
+          return pre.toString().length
+        }
+        const full = box.textContent || ''
+        const start = off(r.startContainer, r.startOffset)
+        const end = off(r.endContainer, r.endOffset)
+        return full ? { start, end, full } : null
+      } catch {
+        return null
+      }
+    }
+    const rangeAt = (box, start, end) => {
+      const w = document.createTreeWalker(box, NodeFilter.SHOW_TEXT)
+      const r = document.createRange()
+      let pos = 0
+      let a = false
+      let b = false
+      for (let n = w.nextNode(); n; n = w.nextNode()) {
+        const len = n.nodeValue.length
+        if (!a && start <= pos + len) {
+          r.setStart(n, start - pos)
+          a = true
+        }
+        if (a && end <= pos + len) {
+          r.setEnd(n, end - pos)
+          b = true
+          break
+        }
+        pos += len
+      }
+      return a && b ? r : null
+    }
+    // true when the text went in at the saved spot; false = use the normal append-at-end insert
+    const placeAtSelection = t => {
+      const sel = t.sel
+      if (!sel) return false
+      try {
+        const box = composerBox(t.target)
+        if (!box) return false
+        const full = box.textContent || ''
+        const replacing = sel.end > sel.start
+        if (!replacing && sel.start >= sel.full.length) return false // caret at the very end: the normal insert already does this
+        // the text around the spot must be what it was (typing elsewhere is fine)
+        if (full.slice(0, sel.start) !== sel.full.slice(0, sel.start)) return false
+        if (full.slice(sel.start, sel.end) !== sel.full.slice(sel.start, sel.end)) return false
+        let text = t.text.replace(/\s*\n\s*/g, ' ').trim()
+        const after = full.slice(sel.end)
+        const before = full.slice(0, sel.start)
+        // a short fix for a word or phrase should read like part of the sentence, not a new one
+        if (text.split(/\s+/).length <= 4 && (replacing || after.trim())) {
+          const old = full.slice(sel.start, sel.end)
+          text = text.replace(/[.!?]+$/, '')
+          if (replacing && /^[a-z]/.test(old)) text = text.charAt(0).toLowerCase() + text.slice(1)
+        }
+        if (before && !/\s$/.test(before)) text = ' ' + text
+        if (after && !/^[\s.,;:!?)]/.test(after)) text += ' '
+        const r = rangeAt(box, sel.start, sel.end)
+        if (!r) return false
+        box.focus()
+        const s = window.getSelection()
+        s.removeAllRanges()
+        s.addRange(r)
+        if (!document.execCommand('insertText', false, text)) return false
+        t.edited = replacing
+        return true
+      } catch {
+        return false
+      }
+    }
+
     // ── ordered insertion ──
     let draining = false
     let drainTimer = 0
     const insert = async t => {
       let ok = false
       try {
-        ok = await host.composer.insertText(t.addr, t.text, { mode: P().insertStyle })
+        ok = placeAtSelection(t) || (await host.composer.insertText(t.addr, t.text, { mode: P().insertStyle }))
       } catch {
         ok = false
       }
