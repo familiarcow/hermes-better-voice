@@ -1791,15 +1791,15 @@ export default {
           }),
           jsx(ToggleRow, {
             key: 'auto',
-            label: 'Auto-send after dictation',
-            description: 'Send the message once the last take lands, after the delay below; a toast lets you cancel.',
+            label: 'Auto-send after transcribing',
+            description: 'Once your dictation is transcribed, the message sends by itself after the delay below. A countdown ring shows in the dictation bar; record again or click ✕ to stop it.',
             checked: p.autoSend,
             onChange: on => update({ autoSend: on })
           }),
           jsx(ListRow, {
             key: 'delay',
             title: 'Auto-send delay',
-            description: 'Seconds before auto-send; typing restarts the countdown, Escape cancels. 0 = immediately.',
+            description: 'Seconds after transcribing finishes before it sends. Typing restarts the countdown, Escape cancels. 0 = send immediately.',
             action: seg(p.autoSendDelaySec, DELAY_CHOICES, ' s', n => update({ autoSendDelaySec: n }))
           }),
           jsx(ToggleRow, {

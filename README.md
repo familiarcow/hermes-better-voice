@@ -4,7 +4,7 @@ Fully local dictation for Hermes Desktop.
 
 - **Live words while you speak**, then an **accurate final pass** when you stop.
 - **Record the next take while earlier ones transcribe.** Each take is its own row, inserted in order. Nothing is sent unless you want it to be.
-- **Queued send**: press Enter while a take is transcribing and it sends once the text lands. Optional auto-send with a cancel countdown. Attachments go along.
+- **Queued send**: press Enter while a take is transcribing and it sends once the text lands. Optional auto-send after transcribing, with a countdown ring you can cancel (record again or click ✕). Attachments go along.
 - **Never loses speech**: cancel with ×, then Undo. If the app quits or the network drops, unfinished takes can be restored from ⌘K → "Better Voice: restore recent dictations".
 - **Your keys**: hold Space, or pick any key or mouse button; hold or tap the mic.
 - **No cloud.** Audio never leaves your machine.
