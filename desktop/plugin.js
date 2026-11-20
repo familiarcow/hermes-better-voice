@@ -942,12 +942,13 @@ export default {
       const key = sendKey(target, addr)
       const old = countdowns.get(key)
       if (old) old.stop?.()
-      const cd = { key, target, addr, stored, left: P().autoSendDelaySec, stop: null }
+      const cd = { key, target, addr, stored, left: P().autoSendDelaySec, stop: null, tick: Date.now() }
       countdowns.set(key, cd)
       const cancelAction = {
         label: 'Cancel',
         onClick: () => cancelCountdown(key, 'Auto-send cancelled; text left in composer')
       }
+      notify()
       const step = () => {
         cd.stop = null
         if (disposed || countdowns.get(key) !== cd) return
@@ -963,8 +964,9 @@ export default {
           sendNow(target, addr, stored)
           return
         }
-        toast(`Sending in ${cd.left}s`, 'info', { id: cdToastId(key), durationMs: 1600, action: cancelAction })
-        cd.left--
+        cd.left-- // the dictation bar shows the countdown ring; no toast
+        cd.tick = Date.now()
+        notify()
         cd.stop = ctx.setTimeout(step, 1000)
       }
       step()
@@ -1547,8 +1549,56 @@ export default {
             })
           })
         : null
-      return jsx('div', { ref, 'data-lw-bar': '', style: { display: 'contents' }, children: bar })
+      const sendRows = target
+        ? [...countdowns.values()].filter(cd => cd.target === target).map(cd => {
+            const remain = Math.max(0, Math.min(1, (cd.left + 1 - (Date.now() - cd.tick) / 1000) / Math.max(1, P().autoSendDelaySec)))
+            return jsxs('div', {
+              key: 'send-' + cd.key,
+              role: 'status',
+              'aria-live': 'polite',
+              className: 'lw-row flex items-center gap-2 rounded-xl border border-border/55 bg-muted/55 px-2.5 py-1.5 text-xs text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-sm',
+              children: [
+                jsxs('svg', {
+                  key: 'r',
+                  viewBox: '0 0 20 20',
+                  className: 'size-5 shrink-0 -rotate-90',
+                  'aria-hidden': 'true',
+                  children: [
+                    jsx('circle', { key: 'b', cx: 10, cy: 10, r: 7.5, fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, className: 'text-border' }),
+                    jsx('circle', { key: 'f', cx: 10, cy: 10, r: 7.5, fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round', className: 'text-primary', strokeDasharray: 47.12, strokeDashoffset: 47.12 * (1 - remain) })
+                  ]
+                }),
+                jsx('span', { key: 't', className: 'min-w-0 flex-1 font-medium text-foreground/85', children: 'Auto-sending' }),
+                jsx('span', { key: 'h', className: 'shrink-0 text-[0.6875rem] text-muted-foreground/70', children: 'record again to keep going' }),
+                jsx('button', {
+                  key: 'c',
+                  type: 'button',
+                  'aria-label': 'Cancel auto-send',
+                  title: 'Cancel auto-send',
+                  className: 'pointer-events-auto -mr-1 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-foreground/10 hover:text-foreground',
+                  style: { pointerEvents: 'auto' },
+                  onPointerDown: e => e.stopPropagation(),
+                  onMouseDown: e => e.stopPropagation(),
+                  onClick: e => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    cancelCountdown(cd.key, 'Auto-send cancelled; text left in composer')
+                  },
+                  children: jsx(XIcon, {})
+                })
+              ]
+            })
+          })
+        : []
+      return jsx('div', { ref, 'data-lw-bar': '', style: { display: 'contents' }, children: [bar, ...sendRows] })
     }
+    let sendRaf = 0
+    const sendLoop = () => {
+      sendRaf = requestAnimationFrame(sendLoop)
+      if (countdowns.size) notify()
+    }
+    sendRaf = requestAnimationFrame(sendLoop)
+    ctx.onDispose?.(() => cancelAnimationFrame(sendRaf))
     ctx.register({ id: 'bar', area: 'composer.top', order: 0, render: () => jsx(VoiceBar, {}) })
 
     // ── settings page: Settings → Plugins → Better Voice ──
