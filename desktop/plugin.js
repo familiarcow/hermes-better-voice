@@ -1044,23 +1044,44 @@ export default {
     // ── insert at the caret / replace the highlighted text ──
     const composerBox = target => document.querySelector(`[data-composer-target="${CSS.escape(target || '')}"] [contenteditable="true"]`) || document.querySelector(`${COMPOSER} [contenteditable="true"]`)
     // remember where the caret / highlight was when recording started (as text offsets, so re-renders can't invalidate it)
+    let lastSel = null // { target, sel, at }: the last caret/highlight seen inside a composer
+    const readSel = target => {
+      const box = composerBox(target)
+      const s = window.getSelection()
+      if (!box || !s || !s.rangeCount) return null
+      const r = s.getRangeAt(0)
+      if (!box.contains(r.startContainer) || !box.contains(r.endContainer)) return null
+      const off = (node, o) => {
+        const pre = document.createRange()
+        pre.selectNodeContents(box)
+        pre.setEnd(node, o)
+        return pre.toString().length
+      }
+      const full = box.textContent || ''
+      const start = off(r.startContainer, r.startOffset)
+      const end = off(r.endContainer, r.endOffset)
+      return full ? { start, end, full } : null
+    }
+    ctx.addEventListener(document, 'selectionchange', () => {
+      try {
+        const n = window.getSelection()?.anchorNode
+        const host = n && (n.nodeType === 1 ? n : n.parentElement)?.closest(COMPOSER)
+        if (!host) return
+        const target = host.dataset.composerTarget
+        const sel = readSel(target)
+        if (sel) lastSel = { target, sel, at: Date.now() }
+      } catch {
+        /* ignore */
+      }
+    })
     const captureSel = target => {
       try {
+        const live = readSel(target)
+        if (live) return live
+        // focus already left the editor (e.g. the mic button was clicked): use the last spot seen there if it still matches
         const box = composerBox(target)
-        const s = window.getSelection()
-        if (!box || !s || !s.rangeCount) return null
-        const r = s.getRangeAt(0)
-        if (!box.contains(r.startContainer) || !box.contains(r.endContainer)) return null
-        const off = (node, o) => {
-          const pre = document.createRange()
-          pre.selectNodeContents(box)
-          pre.setEnd(node, o)
-          return pre.toString().length
-        }
-        const full = box.textContent || ''
-        const start = off(r.startContainer, r.startOffset)
-        const end = off(r.endContainer, r.endOffset)
-        return full ? { start, end, full } : null
+        if (lastSel && box && lastSel.target === target && Date.now() - lastSel.at < 120000 && (box.textContent || '') === lastSel.sel.full) return lastSel.sel
+        return null
       } catch {
         return null
       }
@@ -1318,9 +1339,10 @@ export default {
     const releaseHold = () => {
       if (!hold) return
       clearTimeout(hold.timer)
-      const { started } = hold
+      const { started, tapSpace } = hold
       hold = null
       if (started) stopTake('release')
+      else if (tapSpace) document.execCommand('insertText', false, ' ') // it was a plain space tap: type it over the highlight like normal
     }
     const disarmHold = () => {
       if (hold && !hold.started) {
@@ -1391,7 +1413,12 @@ export default {
       }
       const nonEmpty = (el.textContent || '').trim() !== ''
       const sel = window.getSelection()
-      if (nonEmpty && !(sel && sel.isCollapsed)) return
+      if (nonEmpty && !(sel && sel.isCollapsed)) {
+        // highlighted text: don't let the space overwrite it. Hold = dictate over the highlight; a quick tap still types the space.
+        eat(e)
+        armHold({ kind: 'key', code, tapSpace: true }, target, P().holdDelayMs)
+        return
+      }
       if (!nonEmpty) eat(e)
       const before = el.textContent || ''
       armHold({ kind: 'key', code }, target, P().holdDelayMs + (nonEmpty ? 100 : 0), () => {
