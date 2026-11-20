@@ -932,6 +932,7 @@ export default {
       if (!cd) return false
       countdowns.delete(key)
       cd.stop?.()
+      notify()
       if (msg) toast(msg, 'info', { id: cdToastId(key), durationMs: 3000 })
       return true
     }
@@ -960,6 +961,7 @@ export default {
             return
           }
           countdowns.delete(key)
+          notify() // drop the ring row
           if (pendingFor(target, addr).length) return
           sendNow(target, addr, stored)
           return
